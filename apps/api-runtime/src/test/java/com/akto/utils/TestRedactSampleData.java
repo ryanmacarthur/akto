@@ -88,16 +88,20 @@ public class TestRedactSampleData {
 
         if (!result2) return false;
 
-        Set<String> originalHeaderNamesFromRequest = originalHttpRequestParams.getHeaders().keySet();
-        Set<String> redactedHeaderNamesFromRequest = redactedHttpRequestParams.getHeaders().keySet();
+        Set<String> originalHeaderRequest = originalHttpRequestParams.getHeaders()
+                                                                              .keySet();
+        Set<String> redactedHeaderRequest = redactedHttpRequestParams.getHeaders()
+                                                                              .keySet();
 
-        boolean result3 = originalHeaderNamesFromRequest.equals(redactedHeaderNamesFromRequest);
+        boolean result3 = originalHeaderRequest.equals(redactedHeaderRequest);
         if (!result3) return false;
 
-        Set<String> originalHeaderNamesFromResponse = original.getHeaders().keySet();
-        Set<String> redactedHeaderNamesFromResponse = redacted.getHeaders().keySet();
+        Set<String> originalHeaderResponse = original.getHeaders()
+                                                              .keySet();
+        Set<String> redactedHeaderResponse = redacted.getHeaders()
+                                                              .keySet();
 
-        boolean result4 = originalHeaderNamesFromResponse.equals(redactedHeaderNamesFromResponse);
+        boolean result4 = originalHeaderResponse.equals(redactedHeaderResponse);
         if (!result4) return false;
 
         // test if key names in payload have not been changed

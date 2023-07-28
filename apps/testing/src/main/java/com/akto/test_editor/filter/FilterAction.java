@@ -81,6 +81,7 @@ public final class FilterAction {
         }
     }
 
+
     public DataOperandsFilterResponse apply(FilterActionRequest filterActionRequest) {
 
         String concernedProperty = filterActionRequest.getConcernedProperty();

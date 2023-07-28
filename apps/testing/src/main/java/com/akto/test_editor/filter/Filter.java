@@ -5,8 +5,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.akto.dao.test_editor.TestEditorEnums;
 import com.akto.log.LoggerMaker;
-import com.akto.log.LoggerMaker.LogDb;
 
 import com.akto.dao.test_editor.TestEditorEnums.ExtractOperator;
 import com.akto.dao.test_editor.TestEditorEnums.OperandTypes;
@@ -28,66 +29,7 @@ public class Filter {
     
     public DataOperandsFilterResponse isEndpointValid(FilterNode node, RawApi rawApi, RawApi testRawApi, ApiInfo.ApiInfoKey apiInfoKey, List<String> matchingKeySet, List<BasicDBObject> contextEntities, boolean keyValOperandSeen, String context, Map<String, Object> varMap, String logId) {
 
-        List<FilterNode> childNodes = node.getChildNodes();
-        if (node.getNodeType().equalsIgnoreCase(OperandTypes.Term.toString()) || node.getNodeType().equalsIgnoreCase(OperandTypes.Collection.toString())) {
-            matchingKeySet = null;
-        }
-        if (childNodes.size() == 0) {
-            if (! (node.getNodeType().toLowerCase().equals(OperandTypes.Data.toString().toLowerCase()) || node.getNodeType().toLowerCase().equals(OperandTypes.Extract.toString().toLowerCase()) || node.getNodeType().toLowerCase().equals(OperandTypes.Context.toString().toLowerCase() ))) {
-                return new DataOperandsFilterResponse(false, null, null);
-            }
-            String operand = node.getOperand();
-            FilterActionRequest filterActionRequest = new FilterActionRequest(node.getValues(), rawApi, testRawApi, apiInfoKey, node.getConcernedProperty(), node.getSubConcernedProperty(), matchingKeySet, contextEntities, operand, context, keyValOperandSeen, node.getBodyOperand(), node.getContextProperty());
-            Object updatedQuerySet = filterAction.resolveQuerySetValues(filterActionRequest, node.fetchNodeValues(), varMap);
-            filterActionRequest.setQuerySet(updatedQuerySet);
-            if (node.getOperand().equalsIgnoreCase(ExtractOperator.EXTRACT.toString())) {
-                boolean resp = true;
-                if (filterActionRequest.getConcernedProperty() != null) {
-                    filterAction.extract(filterActionRequest, varMap);
-                } else {
-                    resp = filterAction.extractContextVar(filterActionRequest, varMap);
-                }
-                return new DataOperandsFilterResponse(resp, null, null);
-            } else if (filterActionRequest.getConcernedProperty() != null && !node.getNodeType().equalsIgnoreCase("context")) {
-                return filterAction.apply(filterActionRequest);
-            } else {
-                if (filterActionRequest.getContextProperty() == null) {
-                    filterActionRequest.setContextProperty(node.getOperand());
-                }
-                return filterAction.evaluateContext(filterActionRequest);
-            }
-        }
-
-        boolean result = true;
-        DataOperandsFilterResponse dataOperandsFilterResponse;
-        String operator = "and";
-        if (node.getOperand().toLowerCase().equals("or")) {
-            operator = "or";
-            result = false;
-        }
-        boolean keyValOpSeen = keyValOperandSeen;
-        
-        for (int i = 0; i < childNodes.size(); i++) {
-            FilterNode childNode = childNodes.get(i);
-            dataOperandsFilterResponse = isEndpointValid(childNode, rawApi, testRawApi, apiInfoKey, matchingKeySet, contextEntities, keyValOpSeen,context, varMap, logId);
-            // if (!dataOperandsFilterResponse.getResult()) {
-            //     loggerMaker.infoAndAddToDb("invalid node condition " + logId + " operand " + childNode.getOperand() + 
-            //     " concernedProperty " + childNode.getConcernedProperty() + " subConcernedProperty " + childNode.getSubConcernedProperty()
-            //     + " contextProperty " + childNode.getContextProperty() + " context " + context, LogDb.TESTING);
-            // }
-            contextEntities = dataOperandsFilterResponse.getContextEntities();
-            result = operator.equals("and") ? result && dataOperandsFilterResponse.getResult() : result || dataOperandsFilterResponse.getResult();
-            
-            if (childNodes.get(i).getOperand().toLowerCase().equals("key")) {
-                keyValOpSeen = true;
-            }
-
-            if (!childNode.getNodeType().equalsIgnoreCase("extract")) {
-                matchingKeySet = evaluateMatchingKeySet(matchingKeySet, dataOperandsFilterResponse.getMatchedEntities(), operator);
-            }
-        }
-
-        return new DataOperandsFilterResponse(result, matchingKeySet, contextEntities);
+        return new endPointValid(node, rawApi, testRawApi, apiInfoKey, matchingKeySet, contextEntities, keyValOperandSeen, context, varMap, logId).invoke();
 
     }
 

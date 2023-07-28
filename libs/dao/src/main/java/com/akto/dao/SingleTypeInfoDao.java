@@ -56,34 +56,69 @@ public class SingleTypeInfoDao extends AccountsContextDao<SingleTypeInfo> {
             cursor.next();
         }
 
-        if (counter == 1) {
-            String[] fieldNames = {"url", "method", "responseCode", "isHeader", "param", "subType", "apiCollectionId"};
-            SingleTypeInfoDao.instance.getMCollection().createIndex(Indexes.ascending(fieldNames));    
-        }
-
-        if (counter == 2) {
-            SingleTypeInfoDao.instance.getMCollection().createIndex(Indexes.ascending(new String[]{"apiCollectionId"}));
-            counter++;
-        }
-
-        if (counter == 3) {
-            SingleTypeInfoDao.instance.getMCollection().createIndex(Indexes.ascending(new String[]{"param", "apiCollectionId"}));
-            counter++;
-        }
-
-        if (counter == 4) {
-            SingleTypeInfoDao.instance.getMCollection().createIndex(Indexes.ascending(new String[]{SingleTypeInfo._RESPONSE_CODE, SingleTypeInfo._IS_HEADER, SingleTypeInfo._PARAM, SingleTypeInfo.SUB_TYPE, SingleTypeInfo._API_COLLECTION_ID}));
-            counter++;
-        }
-
-        if (counter == 5) {
-            SingleTypeInfoDao.instance.getMCollection().createIndex(Indexes.ascending(new String[]{SingleTypeInfo.SUB_TYPE, SingleTypeInfo._RESPONSE_CODE}));
-            counter++;
-        }
-
-        if (counter == 6) {
-            String[] fieldNames = {"responseCode", "subType", "timestamp",};
-            SingleTypeInfoDao.instance.getMCollection().createIndex(Indexes.ascending(fieldNames));    
+        switch (counter) {
+            case 1: {
+                String[] fieldNames = {"url",
+                                       "method",
+                                       "responseCode",
+                                       "isHeader",
+                                       "param",
+                                       "subType",
+                                       "apiCollectionId"};
+                SingleTypeInfoDao.instance
+                        .getMCollection()
+                        .createIndex(Indexes
+                                .ascending(fieldNames));
+                break;
+            }
+            case 2: {
+                SingleTypeInfoDao.instance
+                        .getMCollection()
+                        .createIndex(Indexes
+                                .ascending(new String[]{"apiCollectionId"}));
+                counter++;
+            }
+            case 3: {
+                SingleTypeInfoDao.instance
+                        .getMCollection()
+                        .createIndex(Indexes
+                                .ascending(new String[]{"param", "apiCollectionId"}));
+                counter++;
+            }
+            case 4: {
+                SingleTypeInfoDao.instance
+                        .getMCollection()
+                        .createIndex(Indexes
+                                .ascending(new String[]{ SingleTypeInfo
+                                        ._RESPONSE_CODE, SingleTypeInfo
+                                        ._IS_HEADER,     SingleTypeInfo
+                                        ._PARAM,         SingleTypeInfo
+                                        .SUB_TYPE,       SingleTypeInfo
+                                        ._API_COLLECTION_ID}));
+                counter++;
+            }
+            case 5: {
+                SingleTypeInfoDao.instance
+                        .getMCollection()
+                        .createIndex(Indexes
+                                .ascending(new String[]{SingleTypeInfo
+                                        .SUB_TYPE,      SingleTypeInfo
+                                        ._RESPONSE_CODE}));
+                counter++;
+            }
+            case 6: {
+                String[] fieldNames = {"responseCode",
+                                       "subType",
+                                       "timestamp",};
+                SingleTypeInfoDao.instance
+                        .getMCollection()
+                        .createIndex(Indexes
+                                .ascending(fieldNames));
+                break;
+            }
+            default: {
+                System.out.println("Switch ladder missed!");
+            }
         }
     }
 

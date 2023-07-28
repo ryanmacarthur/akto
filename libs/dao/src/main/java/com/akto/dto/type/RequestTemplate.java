@@ -35,6 +35,60 @@ import org.slf4j.LoggerFactory;
 
 public class RequestTemplate {
 
+    private com.akto.dto.type.urlParams urlParams = new urlParams();
+
+    public static Logger getLogger() {
+        return logger;
+    }
+
+    public static long getInsertTime() {
+        return insertTime;
+    }
+
+    public static void setInsertTime(long insertTime) {
+        RequestTemplate.insertTime = insertTime;
+    }
+
+    public static long getProcessTime() {
+        return processTime;
+    }
+
+    public static void setProcessTime(long processTime) {
+        RequestTemplate.processTime = processTime;
+    }
+
+    public static long getDeleteTime() {
+        return deleteTime;
+    }
+
+    public static void setDeleteTime(long deleteTime) {
+        RequestTemplate.deleteTime = deleteTime;
+    }
+
+    public AllParams getAllParams() {
+        return allParams;
+    }
+
+    public void setAllParams(AllParams allParams) {
+        this.allParams = allParams;
+    }
+
+    public Trie getKeyTrie() {
+        return keyTrie;
+    }
+
+    public void setKeyTrie(Trie keyTrie) {
+        this.keyTrie = keyTrie;
+    }
+
+    public int getMergeTimestamp() {
+        return mergeTimestamp;
+    }
+
+    public void setMergeTimestamp(int mergeTimestamp) {
+        this.mergeTimestamp = mergeTimestamp;
+    }
+
     private static class AllParams {
         int lastKnownParamMapSize = 0;
         Set<String> paramNames = new HashSet<>();
@@ -60,14 +114,13 @@ public class RequestTemplate {
 
     private static final Logger logger = LoggerFactory.getLogger(RequestTemplate.class);
 
-    Map<String, KeyTypes> parameters;
-    AllParams allParams = new AllParams();
-    Map<String, KeyTypes> headers;
-    Map<Integer, KeyTypes> urlParams = new HashMap<>();
-    Map<Integer, RequestTemplate> responseTemplates;
-    Set<String> userIds = new HashSet<>();
-    TrafficRecorder trafficRecorder = new TrafficRecorder();
-    Trie keyTrie = new Trie();
+    private Map<String, KeyTypes> parameters;
+    private AllParams allParams = new AllParams();
+    private Map<String, KeyTypes> headers;
+    private Map<Integer, RequestTemplate> responseTemplates;
+    private Set<String> userIds = new HashSet<>();
+    private TrafficRecorder trafficRecorder = new TrafficRecorder();
+    private Trie keyTrie = new Trie();
 
     public RequestTemplate() {
     }
@@ -78,24 +131,24 @@ public class RequestTemplate {
         Map<String,KeyTypes> headers,
         TrafficRecorder trafficRecorder
     ) {
-        this.parameters = parameters;
-        this.headers = headers;
-        this.responseTemplates = responseTemplates;
-        this.trafficRecorder = trafficRecorder;
+        this.setParameters(parameters);
+        this.setHeaders(headers);
+        this.setResponseTemplates(responseTemplates);
+        this.setTrafficRecorder(trafficRecorder);
     }
 
-    int mergeTimestamp = 0;
+    private int mergeTimestamp = 0;
 
     private void add(Set<String> set, String userId) {
         if (set.size() < 10) set.add(userId);
     }
 
     public Set<String> getParamNames() {
-        Set<String> parameterKeys = parameters.keySet();
-        if (parameterKeys.size() != allParams.lastKnownParamMapSize) {
-            allParams.rebuild(parameterKeys);
+        Set<String> parameterKeys = getParameters().keySet();
+        if (parameterKeys.size() != getAllParams().lastKnownParamMapSize) {
+            getAllParams().rebuild(parameterKeys);
         }
-        return allParams.paramNames;
+        return getAllParams().paramNames;
     }
 
     private void insert(Object obj, String userId, Trie.Node<String, Pair<KeyTypes, Set<String>>> root, String url, String method, int responseCode, String prefix, int apiCollectionId, String rawMessage, Map<SensitiveParamInfo, Boolean> sensitiveParamInfoBooleanMap) {
@@ -134,10 +187,10 @@ public class RequestTemplate {
 
     public void processHeaders(Map<String, List<String>> headerPayload, String url, String method, int responseCode, String userId, int apiCollectionId, String rawMessage, Map<SensitiveParamInfo, Boolean> sensitiveParamInfoBooleanMap) {
         for (String header: headerPayload.keySet()) {
-            KeyTypes keyTypes = this.headers.get(header);
+            KeyTypes keyTypes = this.getHeaders().get(header);
             if (keyTypes == null) {
                 keyTypes = new KeyTypes(new HashMap<>(), false);
-                this.headers.put(header, keyTypes);
+                this.getHeaders().put(header, keyTypes);
             }
 
             for(String value: headerPayload.get(header)) {
@@ -147,42 +200,44 @@ public class RequestTemplate {
     }
 
     public void processTraffic(int timestamp) {
-        trafficRecorder.incr(timestamp);
+        getTrafficRecorder().incr(timestamp);
     }
 
     public void recordMessage(String message) {
         if (message != null && message.length() > 0) {
-            trafficRecorder.recordMessage(message);
+            getTrafficRecorder().recordMessage(message);
         }
     }
 
-    public static long insertTime = 0, processTime = 0, deleteTime = 0;
+    private static long insertTime = 0;
+    private static long processTime = 0;
+    private static long deleteTime = 0;
 
     public List<SingleTypeInfo> process2(BasicDBObject payload, String url, String method, int responseCode, String userId, int apiCollectionId, String rawMessage, Map<SensitiveParamInfo, Boolean> sensitiveParamInfoBooleanMap) {
             List<SingleTypeInfo> deleted = new ArrayList<>();
         
-            if(userIds.size() < 10) userIds.add(userId);
+            if(getUserIds().size() < 10) getUserIds().add(userId);
 
-            Trie.Node<String, Pair<KeyTypes, Set<String>>> root = this.keyTrie.getRoot();
+            Trie.Node<String, Pair<KeyTypes, Set<String>>> root = this.getKeyTrie().getRoot();
 
             long s = System.currentTimeMillis();
             // insert(payload, userId, root, url, method, responseCode, "", apiCollectionId);
-            insertTime += (System.currentTimeMillis() - s);
+            setInsertTime(getInsertTime() + (System.currentTimeMillis() - s));
             int now = Context.now();
 
             Map<String, Set<Object>> flattened = JSONUtils.flatten(payload);
             s = System.currentTimeMillis();
             for(String param: flattened.keySet()) {
-                if (parameters.size() > 1000) {
+                if (getParameters().size() > 1000) {
                     continue;
                 }
-                KeyTypes keyTypes = parameters.get(param);
+                KeyTypes keyTypes = getParameters().get(param);
                 if (keyTypes == null) {
 
                     boolean isParentPresent = false;
                     int curr = param.indexOf("#");
                     while (curr < param.length() && curr > 0) {
-                        KeyTypes occ = parameters.get(param.substring(0, curr));
+                        KeyTypes occ = getParameters().get(param.substring(0, curr));
                         if (occ != null && occ.occurrences.containsKey(SingleTypeInfo.DICT)) {
                             isParentPresent = true;
                             break;
@@ -195,7 +250,7 @@ public class RequestTemplate {
                         continue;
                     } else {
                         keyTypes = new KeyTypes(new HashMap<>(), false);
-                        parameters.put(param, keyTypes);    
+                        getParameters().put(param, keyTypes);
                     }
                 }
 
@@ -204,59 +259,59 @@ public class RequestTemplate {
                 }
             }
 
-            processTime += (System.currentTimeMillis() - s);
+            setProcessTime(getProcessTime() + (System.currentTimeMillis() - s));
 
             s = System.currentTimeMillis();
-            if (now - mergeTimestamp > 60 * 2) {
+            if (now - getMergeTimestamp() > 60 * 2) {
 //                deleted = tryMergeNodesInTrie(url, method, responseCode, apiCollectionId);
-                mergeTimestamp = now;
+                setMergeTimestamp(now);
             }
 
-            deleteTime += (System.currentTimeMillis() - s);
+            setDeleteTime(getDeleteTime() + (System.currentTimeMillis() - s));
             return deleted;
     }
     
     public List<SingleTypeInfo> tryMergeNodesInTrie(String url, String method, int responseCode, int apiCollectionId) {
         List<SingleTypeInfo> deletedInfo = new ArrayList<>();
-        List<String> mergedNodes = tryMergeNodes(keyTrie.getRoot(), 5, url, method, "", responseCode, apiCollectionId);
+        List<String> mergedNodes = tryMergeNodes(getKeyTrie().getRoot(), 5, url, method, "", responseCode, apiCollectionId);
 
         if (mergedNodes == null) {
             mergedNodes = new ArrayList<>();
         }
 
         for(String prefix: mergedNodes) {
-            Iterator<String> iter = parameters.keySet().iterator();
+            Iterator<String> iter = getParameters().keySet().iterator();
 
             while(iter.hasNext()) {
                 String paramPath = iter.next();
                 if (paramPath.startsWith(prefix)) {
-                    deletedInfo.addAll(parameters.get(paramPath).getAllTypeInfo());
+                    deletedInfo.addAll(getParameters().get(paramPath).getAllTypeInfo());
                     iter.remove();
                 }
             }
         }
 
-        keyTrie.flatten(parameters);
+        getKeyTrie().flatten(getParameters());
 
         return deletedInfo;
     }
 
     public void buildTrie() {
-        this.keyTrie = new Trie();
+        this.setKeyTrie(new Trie());
 
-        for(String paramPathStr: this.parameters.keySet()) {
+        for(String paramPathStr: this.getParameters().keySet()) {
             try { 
                 String[] paramPath = paramPathStr.split("#");
 
-                Node<String, Pair<KeyTypes, Set<String>>> curr = this.keyTrie.getRoot();
+                Node<String, Pair<KeyTypes, Set<String>>> curr = this.getKeyTrie().getRoot();
                 for (String path: paramPath) {
                     curr = curr.getOrCreate(path, new Pair<>(new KeyTypes(new HashMap<>(), false), new HashSet<>()));
                 }
 
-                curr.getValue().setFirst(this.parameters.get(paramPathStr));
-                curr.getValue().setSecond(this.parameters.get(paramPathStr).occurrences.values().iterator().next().userIds);
+                curr.getValue().setFirst(this.getParameters().get(paramPathStr));
+                curr.getValue().setSecond(this.getParameters().get(paramPathStr).occurrences.values().iterator().next().userIds);
             } catch (Exception e) {
-                logger.error("exception in " + paramPathStr, e);
+                getLogger().error("exception in " + paramPathStr, e);
             }
 
         }
@@ -305,25 +360,25 @@ public class RequestTemplate {
     public RequestTemplate copy() {
         RequestTemplate ret = new RequestTemplate(new HashMap<>(), new HashMap<>(), new HashMap<>(), new TrafficRecorder(new HashMap<>()));
         
-        for(String parameter: parameters.keySet()) {
-            ret.parameters.put(parameter, parameters.get(parameter).copy());
+        for(String parameter: getParameters().keySet()) {
+            ret.getParameters().put(parameter, getParameters().get(parameter).copy());
         }
 
-        for(String header: headers.keySet()) {
-            ret.headers.put(header, headers.get(header).copy());
+        for(String header: getHeaders().keySet()) {
+            ret.getHeaders().put(header, getHeaders().get(header).copy());
         }
 
-        if (responseTemplates != null) {
-            for(int code: responseTemplates.keySet()) {
-                ret.responseTemplates.put(code, responseTemplates.get(code).copy());
+        if (getResponseTemplates() != null) {
+            for(int code: getResponseTemplates().keySet()) {
+                ret.getResponseTemplates().put(code, getResponseTemplates().get(code).copy());
             }
         }
 
-        ret.userIds = new HashSet<>();
-        ret.userIds.addAll(this.userIds);
+        ret.setUserIds(new HashSet<>());
+        ret.getUserIds().addAll(this.getUserIds());
 
-        ret.keyTrie = this.keyTrie;
-        ret.trafficRecorder = this.trafficRecorder;
+        ret.setKeyTrie(this.getKeyTrie());
+        ret.setTrafficRecorder(this.getTrafficRecorder());
 
         return ret;
     }
@@ -357,7 +412,7 @@ public class RequestTemplate {
 
         if (diff < 0.5) return null;
 
-        logger.info("flattening trie @" + node.getPathElem() + " in " + url);
+        getLogger().info("flattening trie @" + node.getPathElem() + " in " + url);
 
         Map<SubType, SingleTypeInfo> occ = new HashMap<>();
 
@@ -403,50 +458,50 @@ public class RequestTemplate {
             " parameters='" + getParameters() + "'" +
             ", responseTemplates='" + getResponseTemplates() + "'" +
             ", headers='" + getHeaders() + "'" +
-            ", userIds='" + userIds + "'" +
+            ", userIds='" + getUserIds() + "'" +
             "}";
     }
 
     public void mergeFrom(RequestTemplate that) {
-        for(String paramName: that.parameters.keySet()) {
-            KeyTypes thisKeyTypes = this.parameters.get(paramName);
-            KeyTypes thatKeyTypes = that.parameters.get(paramName);
+        for(String paramName: that.getParameters().keySet()) {
+            KeyTypes thisKeyTypes = this.getParameters().get(paramName);
+            KeyTypes thatKeyTypes = that.getParameters().get(paramName);
             if (thisKeyTypes == null) {
-                this.parameters.put(paramName, thatKeyTypes.copy());
+                this.getParameters().put(paramName, thatKeyTypes.copy());
             } else {
                 thisKeyTypes.merge(thatKeyTypes);
             }
         }
 
-        for(String header: that.headers.keySet()) {
-            KeyTypes thisKeyTypes = this.headers.get(header);
-            KeyTypes thatKeyTypes = that.headers.get(header);
+        for(String header: that.getHeaders().keySet()) {
+            KeyTypes thisKeyTypes = this.getHeaders().get(header);
+            KeyTypes thatKeyTypes = that.getHeaders().get(header);
             if (thisKeyTypes == null) {
-                this.headers.put(header, thatKeyTypes.copy());
+                this.getHeaders().put(header, thatKeyTypes.copy());
             } else {
                 thisKeyTypes.merge(thatKeyTypes);
             }
         }
 
 
-        if (that.responseTemplates != null) {
+        if (that.getResponseTemplates() != null) {
 
-            for(int statusCode: that.responseTemplates.keySet()) {
-                RequestTemplate thisResp = this.responseTemplates.get(statusCode);
-                RequestTemplate thatResp = that.responseTemplates.get(statusCode);
+            for(int statusCode: that.getResponseTemplates().keySet()) {
+                RequestTemplate thisResp = this.getResponseTemplates().get(statusCode);
+                RequestTemplate thatResp = that.getResponseTemplates().get(statusCode);
                 if (thisResp == null) {
-                    this.responseTemplates.put(statusCode, thatResp.copy());
+                    this.getResponseTemplates().put(statusCode, thatResp.copy());
                 } else {
                     thisResp.mergeFrom(thatResp);
                 }
             }
         }
 
-        this.userIds.addAll(that.userIds);
+        this.getUserIds().addAll(that.getUserIds());
 
-        this.keyTrie.getRoot().mergeFrom(that.keyTrie.getRoot(), MergeTrieKeyFunc.instance);
+        this.getKeyTrie().getRoot().mergeFrom(that.getKeyTrie().getRoot(), MergeTrieKeyFunc.instance);
 
-        this.trafficRecorder.mergeFrom(that.getTrafficRecorder());
+        this.getTrafficRecorder().mergeFrom(that.getTrafficRecorder());
     }
 
     private static class MergeTrieKeyFunc implements BiConsumer<Pair<KeyTypes,Set<String>>,Pair<KeyTypes,Set<String>>> {
@@ -464,20 +519,20 @@ public class RequestTemplate {
     public List<SingleTypeInfo> getAllTypeInfo() {
         List<SingleTypeInfo> ret = new ArrayList<>();
 
-        for(KeyTypes k: parameters.values()) {
+        for(KeyTypes k: getParameters().values()) {
             ret.addAll(k.getAllTypeInfo());
         }
 
-        for(KeyTypes k: headers.values()) {
+        for(KeyTypes k: getHeaders().values()) {
             ret.addAll(k.getAllTypeInfo());
         }
 
-        for (KeyTypes k: urlParams.values()) {
+        for (KeyTypes k: urlParams.getUrlParams().values()) {
             ret.addAll(k.getAllTypeInfo());
         }
 
-        if (responseTemplates != null) {
-            for(RequestTemplate responseParams: responseTemplates.values()) {
+        if (getResponseTemplates() != null) {
+            for(RequestTemplate responseParams: getResponseTemplates().values()) {
                 ret.addAll(responseParams.getAllTypeInfo());
             }
         }
@@ -486,18 +541,18 @@ public class RequestTemplate {
 
     public List<TrafficInfo> removeAllTrafficInfo(int apiCollectionId, String url, Method method, int responseCode) {
         List<TrafficInfo> ret = new ArrayList<>();
-        if (!trafficRecorder.isEmpty()) {
-            Set<String> hoursSince1970 = trafficRecorder.getTrafficMapSinceLastSync().keySet();
+        if (!getTrafficRecorder().isEmpty()) {
+            Set<String> hoursSince1970 = getTrafficRecorder().getTrafficMapSinceLastSync().keySet();
             int start = Integer.parseInt(hoursSince1970.iterator().next())/24/30;
             int end = start + 1;
-            TrafficInfo trafficInfo = new TrafficInfo(new Key(apiCollectionId, url, method, responseCode, start, end), trafficRecorder.getTrafficMapSinceLastSync());
+            TrafficInfo trafficInfo = new TrafficInfo(new Key(apiCollectionId, url, method, responseCode, start, end), getTrafficRecorder().getTrafficMapSinceLastSync());
             ret.add(trafficInfo);
         }
 
-        trafficRecorder.setTrafficMapSinceLastSync(new HashMap<>());
+        getTrafficRecorder().setTrafficMapSinceLastSync(new HashMap<>());
 
-        if (responseTemplates != null && responseTemplates.size() > 0) {
-            for(Map.Entry<Integer, RequestTemplate> entry: responseTemplates.entrySet()) {
+        if (getResponseTemplates() != null && getResponseTemplates().size() > 0) {
+            for(Map.Entry<Integer, RequestTemplate> entry: getResponseTemplates().entrySet()) {
                 ret.addAll(entry.getValue().removeAllTrafficInfo(apiCollectionId, url, method, entry.getKey()));
             }
         }
@@ -507,8 +562,8 @@ public class RequestTemplate {
 
     public List<String> removeAllSampleMessage() {
         List<String> ret = new ArrayList<>();
-        ret.addAll(trafficRecorder.getSampleMessages().get());
-        trafficRecorder.getSampleMessages().get().clear();
+        ret.addAll(getTrafficRecorder().getSampleMessages().get());
+        getTrafficRecorder().getSampleMessages().get().clear();
         return ret;
     }
 
@@ -741,43 +796,16 @@ public class RequestTemplate {
     }
 
     public Map<Integer, KeyTypes> getUrlParams() {
-        return urlParams;
+        return urlParams.getUrlParams();
     }
 
     public void setUrlParams(Map<Integer, KeyTypes> urlParams) {
-        this.urlParams = urlParams;
+        this.urlParams = (com.akto.dto.type.urlParams) urlParams;
     }
 
     // unit tests for "fillUrlParams" written in TestApiCatalogSync
     public void fillUrlParams(String[] tokenizedUrl, URLTemplate urlTemplate, int apiCollectionId) {
-        if (this.urlParams == null) this.urlParams = new HashMap<>();
 
-        SuperType[] types = urlTemplate.getTypes();
-        String url = urlTemplate.getTemplateString();
-        String method = urlTemplate.getMethod().name();
-
-        if (tokenizedUrl.length != types.length) return;
-
-        for (int idx=0; idx < types.length; idx++) {
-            SuperType superType = types[idx];
-            if (superType == null) continue;
-            Object val = tokenizedUrl[idx];
-
-            if (superType.equals(SuperType.INTEGER)) {
-                val = Integer.parseInt(val.toString());
-            } else if (superType.equals(SuperType.FLOAT)) {
-                val = Float.parseFloat(val.toString());
-            }
-
-            KeyTypes keyTypes = this.urlParams.get(idx);
-            if (keyTypes == null) {
-                keyTypes = new KeyTypes(new HashMap<>(), false);
-                this.urlParams.put(idx, keyTypes);
-            }
-
-            String userId = "";
-            keyTypes.process(url, method, -1, false, idx+"", val,userId, apiCollectionId, "", new HashMap<>(), true);
-
-        }
+        urlParams.fillUrlParams(tokenizedUrl, urlTemplate, apiCollectionId);
     }
 }
